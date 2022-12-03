@@ -46,7 +46,7 @@ Digraph build_digraph(const Digraph& market)
       Arc a0;
       Vertex to = boost::target(arc, market);
       std::tie(a0, std::ignore) = add_edge(vertex, to, digraph);
-      digraph[a0].cost = log2(market[arc].cost);
+      digraph[a0].cost = -log2(market[arc].cost);
     }
   }
 
