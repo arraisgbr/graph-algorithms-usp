@@ -3,6 +3,7 @@
 #include <utility>              // for std::get
 #include <tuple>
 #include <vector>
+#include <stack>
 
 #include <cmath>
 
@@ -26,6 +27,8 @@ using boost::add_edge;
 using boost::out_edges;
 using boost::make_iterator_range;
 using std::vector;
+using std::stack;
+using std::pair;
 
 Digraph build_digraph(const Digraph& market)
 {
@@ -67,46 +70,58 @@ has_negative_cycle(Digraph& digraph)
 
   // bellman-ford algorithm
   boost::graph_traits<Digraph>::vertices_size_type n = num_vertices(digraph);
-
-  double matrix[2][n];
-  memset(matrix, 0, sizeof(matrix));
+  double matrix[2][n]; memset(matrix, 0, sizeof(matrix));
   
   for(int i = 1 ; i <= n ; i++){
     for(const auto& arc : make_iterator_range(edges(digraph))){
         Vertex from = boost::source(arc, digraph);
         Vertex to = boost::target(arc, digraph);
         matrix[i%2][to] = matrix[(i-1)%2][to];
-        if(matrix[i%2][to] > matrix[(i-1)%2][from] + digraph[arc].cost)
+        if(matrix[i%2][to] > matrix[(i-1)%2][from] + digraph[arc].cost){
+          digraph[to].pred = from;
           matrix[i%2][to] = matrix[(i-1)%2][from] + digraph[arc].cost;
+        }
     }
   }
 
   // verifying if the graph has a negative cycle
   bool hasNegativeCycle = false;
+  int changed_vertex = -1;
   for(int i = 0 ; i < n ; i++){
     if(matrix[1][i] != matrix[0][i]){
       hasNegativeCycle = true;
+      changed_vertex = i;
       break;
     }
   }
 
   if(hasNegativeCycle){
-  /* Replace `NegativeCycle(walk)` with `boost::none` in the next
-   * command to trigger "negative cycle reported but not computed".
-   * Comment the whole `return` and uncomment the remaining lines to
-   * exercise construction of a feasible potential. */
-  
-  // encourage RVO
-    return {true, boost::none, boost::none};
+    // recovery a walk
+    stack<int> auxWalk;
+    bool visited[n]; memset(visited, 0, sizeof(visited));
+    while(!visited[changed_vertex]){
+      visited[changed_vertex] = true;
+      auxWalk.push(changed_vertex);
+      changed_vertex = digraph[changed_vertex].pred;
+    }
+    
+    // constructing a walk object
+    Walk walk = Walk(digraph, changed_vertex);
+    Vertex pred = changed_vertex;
+    while(!walk.is_cycle()){
+      Vertex current = auxWalk.top(); auxWalk.pop();
+      pair<Arc, bool> arc = boost::edge(pred, current, digraph);
+      walk.extend(arc.first);
+      pred = current;
+    }
+
+    return {true, NegativeCycle(walk), boost::none};
   }
   else{
-    /* Replace `FeasiblePotential(digraph, y)` with `boost::none` in the
-    * next command to trigger "feasible potential reported but not
-    * computed". */
-
-    // encourage RVO
+    // copying the feasible potentials
     vector<double> y(num_vertices(digraph), 0.0);
     for(int i = 0 ; i < n ; i++) y[i] = matrix[1][i];
+    
     return {false, boost::none, FeasiblePotential(digraph, y)};
   }
 }

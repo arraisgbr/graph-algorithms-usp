@@ -8,7 +8,7 @@
 /* Students may add any number of fields and methods to this struct */
 struct BundledVertex
 {
-
+  int pred;
 };
 
 /* Students may add any number of fields and methods to this struct;
