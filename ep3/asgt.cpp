@@ -20,6 +20,7 @@
 /* The following declarations shorten the bogus code below. Feel free
  * to change/drop them. */
 using boost::vertices;
+using boost::edges;
 using boost::num_vertices;
 using boost::add_edge;
 using boost::out_edges;
@@ -57,28 +58,56 @@ std::tuple<bool,
            boost::optional<FeasiblePotential>>
 has_negative_cycle(Digraph& digraph)
 {
-  const Arc& a0 = *(out_edges(0, digraph).first);
-  const Arc& a1 = *(out_edges(1, digraph).first);
+  // const Arc& a0 = *(out_edges(0, digraph).first);
+  // const Arc& a1 = *(out_edges(1, digraph).first);
 
-  Walk walk(digraph, 0);
-  walk.extend(a0);
-  walk.extend(a1);
+  // Walk walk(digraph, 0);
+  // walk.extend(a0);
+  // walk.extend(a1);
 
+  // bellman-ford algorithm
+  boost::graph_traits<Digraph>::vertices_size_type n = num_vertices(digraph);
+
+  double matrix[2][n];
+  memset(matrix, 0, sizeof(matrix));
+  
+  for(int i = 1 ; i <= n ; i++){
+    for(const auto& arc : make_iterator_range(edges(digraph))){
+        Vertex from = boost::source(arc, digraph);
+        Vertex to = boost::target(arc, digraph);
+        matrix[i%2][to] = matrix[(i-1)%2][to];
+        if(matrix[i%2][to] > matrix[(i-1)%2][from] + digraph[arc].cost)
+          matrix[i%2][to] = matrix[(i-1)%2][from] + digraph[arc].cost;
+    }
+  }
+
+  // verifying if the graph has a negative cycle
+  bool hasNegativeCycle = false;
+  for(int i = 0 ; i < n ; i++){
+    if(matrix[1][i] != matrix[0][i]){
+      hasNegativeCycle = true;
+      break;
+    }
+  }
+
+  if(hasNegativeCycle){
   /* Replace `NegativeCycle(walk)` with `boost::none` in the next
    * command to trigger "negative cycle reported but not computed".
    * Comment the whole `return` and uncomment the remaining lines to
    * exercise construction of a feasible potential. */
 
   // encourage RVO
-  return {true, NegativeCycle(walk), boost::none};
+    return {true, boost::none, boost::none};
+  }
+  else{
+    /* Replace `FeasiblePotential(digraph, y)` with `boost::none` in the
+    * next command to trigger "feasible potential reported but not
+    * computed". */
 
-  /* Replace `FeasiblePotential(digraph, y)` with `boost::none` in the
-   * next command to trigger "feasible potential reported but not
-   * computed". */
-
-  // encourage RVO
-  vector<double> y(num_vertices(digraph), 0.0);
-  return {false, boost::none, FeasiblePotential(digraph, y)};
+    // encourage RVO
+    vector<double> y(num_vertices(digraph), 0.0);
+    return {false, boost::none, boost::none};
+  }
 }
 
 Loophole build_loophole(const NegativeCycle& negcycle,
