@@ -4,6 +4,8 @@
 #include <tuple>
 #include <vector>
 
+#include <cmath>
+
 #define BOOST_ALLOW_DEPRECATED_HEADERS // silence warnings
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/optional.hpp>
@@ -17,9 +19,11 @@
 
 /* The following declarations shorten the bogus code below. Feel free
  * to change/drop them. */
-using boost::add_edge;
+using boost::vertices;
 using boost::num_vertices;
+using boost::add_edge;
 using boost::out_edges;
+using boost::make_iterator_range;
 using std::vector;
 
 Digraph build_digraph(const Digraph& market)
@@ -29,13 +33,21 @@ Digraph build_digraph(const Digraph& market)
 
   /* flip some signs in the arc costs below to exercise the many
    * execution pathways */
-
   /* create arcs 01 and 10 */
-  Arc a0, a1;
-  std::tie(a0, std::ignore) = add_edge(0, 1, digraph);
-  digraph[a0].cost = 11.0;
-  std::tie(a1, std::ignore) = add_edge(1, 0, digraph);
-  digraph[a1].cost = -17.0;
+  // Arc a0, a1;
+  // std::tie(a0, std::ignore) = add_edge(0, 1, digraph);
+  // digraph[a0].cost = 11.0;
+  // std::tie(a1, std::ignore) = add_edge(1, 0, digraph);
+  // digraph[a1].cost = -17.0;
+
+  for(const auto& vertex : make_iterator_range(vertices(market))){
+    for(const auto& arc : make_iterator_range(out_edges(vertex, market))){
+      Arc a0;
+      Vertex to = boost::target(arc, market);
+      std::tie(a0, std::ignore) = add_edge(vertex, to, digraph);
+      digraph[a0].cost = log2(market[arc].cost);
+    }
+  }
 
   return digraph;
 }
