@@ -131,13 +131,19 @@ Loophole build_loophole(const NegativeCycle& negcycle,
                         const Digraph& aux_digraph,
                         const Digraph& market)
 {
-  /* bogus code */
-  const Arc& b0 = *(out_edges(0, market).first);
-  const Arc& b1 = *(out_edges(1, market).first);
+  vector<Arc> arcs = negcycle.get();
+  Vertex firstV = boost::source(arcs[0], aux_digraph);
+  Vertex secondV = boost::target(arcs[0], aux_digraph);
+  Arc firstA = boost::edge(firstV, secondV, market).first;
+  Walk w = Walk(market, firstV);
+  w.extend(firstA);
 
-  Walk w(market, 0);
-  w.extend(b0);
-  w.extend(b1);
+  for(int i = 1 ; i < arcs.size() ; i++){
+    Vertex from = boost::source(arcs[i], aux_digraph);
+    Vertex to = boost::target(arcs[i], aux_digraph);
+    Arc arcMarket = boost::edge(from, to, market).first;
+    w.extend(arcMarket);
+  }
 
   return Loophole(w);
 }
