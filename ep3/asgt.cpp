@@ -95,7 +95,7 @@ has_negative_cycle(Digraph& digraph)
    * command to trigger "negative cycle reported but not computed".
    * Comment the whole `return` and uncomment the remaining lines to
    * exercise construction of a feasible potential. */
-
+  
   // encourage RVO
     return {true, boost::none, boost::none};
   }
@@ -106,7 +106,8 @@ has_negative_cycle(Digraph& digraph)
 
     // encourage RVO
     vector<double> y(num_vertices(digraph), 0.0);
-    return {false, boost::none, boost::none};
+    for(int i = 0 ; i < n ; i++) y[i] = matrix[1][i];
+    return {false, boost::none, FeasiblePotential(digraph, y)};
   }
 }
 
