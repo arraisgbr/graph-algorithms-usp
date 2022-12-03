@@ -1,4 +1,4 @@
-BOOST_ROOT?=~/boost_1_80_0
+BOOST_ROOT?=~/boost_1_66_0
 
 SRCS=$(wildcard *.cpp)
 DEPS=$(SRCS:.cpp=.d)
