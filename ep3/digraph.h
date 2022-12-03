@@ -9,6 +9,7 @@
 struct BundledVertex
 {
   int pred;
+  double fp;
 };
 
 /* Students may add any number of fields and methods to this struct;

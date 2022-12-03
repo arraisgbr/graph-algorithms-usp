@@ -49,7 +49,7 @@ Digraph build_digraph(const Digraph& market)
       Arc a0;
       Vertex to = boost::target(arc, market);
       std::tie(a0, std::ignore) = add_edge(vertex, to, digraph);
-      digraph[a0].cost = -log2(market[arc].cost);
+      digraph[a0].cost = -log(market[arc].cost);
     }
   }
 
@@ -80,6 +80,7 @@ has_negative_cycle(Digraph& digraph)
         if(matrix[i%2][to] > matrix[(i-1)%2][from] + digraph[arc].cost){
           digraph[to].pred = from;
           matrix[i%2][to] = matrix[(i-1)%2][from] + digraph[arc].cost;
+          digraph[to].fp = matrix[i%2][to];
         }
     }
   }
@@ -138,7 +139,6 @@ Loophole build_loophole(const NegativeCycle& negcycle,
   w.extend(b0);
   w.extend(b1);
 
-  // encourage RVO
   return Loophole(w);
 }
 
@@ -148,6 +148,9 @@ FeasibleMultiplier build_feasmult(const FeasiblePotential& feaspot,
 {
   vector<double> z(num_vertices(market), 1.0);
 
-  // encourage RVO
+  int n = num_vertices(market);
+  for(int i = 0 ; i < n ; i++)
+    z[i] = exp(-aux_digraph[i].fp);
+
   return FeasibleMultiplier(market, z);
 }
