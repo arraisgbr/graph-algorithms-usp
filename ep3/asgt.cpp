@@ -76,7 +76,6 @@ has_negative_cycle(Digraph& digraph)
     for(const auto& arc : make_iterator_range(edges(digraph))){
         Vertex from = boost::source(arc, digraph);
         Vertex to = boost::target(arc, digraph);
-        matrix[i%2][to] = matrix[(i-1)%2][to];
         if(matrix[i%2][to] > matrix[(i-1)%2][from] + digraph[arc].cost){
           digraph[to].pred = from;
           matrix[i%2][to] = matrix[(i-1)%2][from] + digraph[arc].cost;
