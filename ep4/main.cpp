@@ -134,20 +134,17 @@ pair<pair<vector<Arc>, vector<bool>>, bool> bfs(Digraph &residual, int source, i
 
 }
 
-void change_digraph(Digraph &digraph, Digraph &residual, vector<Arc> &path, int e){
-    for(auto arcResidual : path){
-        int source = boost::source(arcResidual, residual);
-        int target = boost::target(arcResidual, residual);
-        Arc arcDigraph = boost::edge(source, target, digraph).first;
-        if(residual[arcResidual].dir == FORWARD) digraph[arcDigraph].flow += e;
-        else digraph[arcDigraph].flow -= e;
+void change_digraph(Digraph &residual, vector<Arc> &path, int e){
+    for(auto arc : path){
+        if(residual[arc].dir == FORWARD) residual[arc].capacity -= e;
+        else residual[arc].capacity += e;
     }
 }
 
-void print_path(Digraph &digraph, vector<Arc> &path, vector<Arc> &input_order){
+void print_path(Digraph &residual, vector<Arc> &path, vector<Arc> &input_order){
     for(int i = 0 ; i < input_order.size() ; i++){
         if(std::find(path.begin(), path.end(), input_order[i]) != path.end()){
-            if(digraph[input_order[i]].dir == FORWARD) std::cout << i+1 << " ";
+            if(residual[input_order[i]].dir == FORWARD) std::cout << i+1 << " ";
             else std::cout << -(i+1) << " ";
         }
     }
@@ -169,16 +166,16 @@ int count_cut(vector<bool> &s){
 
 void edmonds_karp(Digraph &digraph, vector<Arc> &input_order, int source, int target){
     int maxFlow, e; maxFlow = e = 0;
+    Digraph *residual = get_residual(digraph);
     while(true){
-        Digraph *residual = get_residual(digraph);
         print_residual(*residual, input_order);
         pair<pair<vector<Arc>, vector<bool>>, bool> bfs_results = bfs(*residual, source, target);
         if(bfs_results.second){
             e = min_capacity(*residual, bfs_results.first.first);
             maxFlow += e;
-            change_digraph(digraph, *residual, bfs_results.first.first, e);
+            change_digraph(*residual, bfs_results.first.first, e);
             std::cout << "0 " << e << " " <<  bfs_results.first.first.size() << endl;
-            print_path(digraph, bfs_results.first.first, input_order);
+            print_path(*residual, bfs_results.first.first, input_order);
             std::cout << endl;
         }
         else{
