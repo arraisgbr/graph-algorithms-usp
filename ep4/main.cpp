@@ -11,13 +11,13 @@ enum direction{ FORWARD = 1, BACKWARD = -1};
 
 #pragma region // bundled properties
 struct BundledVertex{
-    int father = -1;
+    int father;
 };
 
 struct BundledArc{
     direction dir;
     int capacity;
-    int flow = 0;
+    int flow;
 };
 #pragma endregion
 
@@ -37,42 +37,40 @@ using std::vector;
 using std::queue;
 #pragma endregion
 
-vector<Arc>& read_digraph(Digraph &digraph, int m, std::istream &in){
+vector<Arc> read_digraph(Digraph &digraph, int m, std::istream &in){
     vector<Arc> input_order;
     while(m--){
         int u, v, c; std::cin >> u >> v >> c;
         Arc a;
         std::tie(a, std::ignore) = add_edge(--u, --v, digraph);
-        digraph[a].dir = FORWARD; digraph[a].capacity = c;
+        digraph[a].dir = FORWARD; digraph[a].capacity = c; digraph[a].flow = 0;
         input_order.push_back(a);
     }
 
     return input_order;
 }
 
-Digraph& get_residual(Digraph &digraph){
-    Digraph residual(num_vertices(digraph));
+Digraph* get_residual(Digraph &digraph){
+    Digraph *residual = new Digraph(num_vertices(digraph));
     for(auto arc : make_iterator_range(boost::edges(digraph))){
         Vertex source = boost::source(arc, digraph);
         Vertex target = boost::target(arc, digraph);
-        pair<Arc, bool> arcForward = add_edge(source, target, residual);
-        pair<Arc, bool> arcBackward = add_edge(source, target, residual);
+        Arc arcForward = add_edge(source, target, *residual).first;
+        Arc arcBackward = add_edge(source, target, *residual).first;
 
-        residual[arcForward.first].dir = FORWARD;
-        residual[arcForward.first].capacity = digraph[arc].capacity - digraph[arc].flow;
+        (*residual)[arcForward].dir = FORWARD;
+        (*residual)[arcForward].capacity = digraph[arc].capacity - digraph[arc].flow;
         
-        residual[arcBackward.first].dir = BACKWARD;
-        residual[arcForward.first].capacity = digraph[arc].flow;
+        (*residual)[arcBackward].dir = BACKWARD;
+        (*residual)[arcBackward].capacity = digraph[arc].flow;
     }
 
     return residual;
 }
 
-// Funciona?
 void print_residual(Digraph &residual, vector<Arc> &input_order){
-    for(auto arc : input_order){
-        std::cout << residual[arc].capacity << " " << residual[arc].capacity;
-    }
+    for(auto arc : input_order)
+        std::cout << residual[arc].capacity << " " << residual[arc].capacity << std::endl;
 }
 
 int min_capacity(Digraph &residual, vector<Arc> &path){
@@ -85,11 +83,11 @@ int min_capacity(Digraph &residual, vector<Arc> &path){
 
 pair<pair<vector<Arc>, vector<bool>>, bool> bfs(Digraph &residual, int source, int target){
     vector<bool> vertices(num_vertices(residual), false);
-    vector<int> dist(num_vertices(residual), 0);
 
     queue<int> queueBfs; queueBfs.push(source);
 
     vertices[source] = true;
+    residual[source].father = -1;
 
     // bfs
     while(!queueBfs.empty()){
@@ -98,8 +96,8 @@ pair<pair<vector<Arc>, vector<bool>>, bool> bfs(Digraph &residual, int source, i
             Vertex to = boost::target(arc, residual);
             if(!vertices[to]){
                 residual[to].father = from;
-                dist[to] = dist[from] + 1;
                 vertices[to] = true;
+                queueBfs.push(to);
             }
         }
     }
@@ -118,7 +116,7 @@ pair<pair<vector<Arc>, vector<bool>>, bool> bfs(Digraph &residual, int source, i
             target = from;
         }
 
-        reverse(pathArcs.begin(), pathArcs.end());
+        reverse(pathVertices.begin(), pathVertices.end());
 
         for(int i = 0 ; i < pathVertices.size() - 1 ; i++){
             int from = pathVertices[i];
@@ -133,7 +131,8 @@ pair<pair<vector<Arc>, vector<bool>>, bool> bfs(Digraph &residual, int source, i
 
 }
 
-Digraph& change_digraph(Digraph &digraph, vector<Arc> arcs, int e){
+void change_digraph(Digraph &digraph, vector<Arc> &arcs, int e){
+    std::cout << "entra change_digraph" << std::endl;
     for(auto arc : arcs){
         if(digraph[arc].dir == FORWARD) digraph[arc].flow += e;
         else digraph[arc].flow -= e;
@@ -141,6 +140,7 @@ Digraph& change_digraph(Digraph &digraph, vector<Arc> arcs, int e){
 }
 
 void print_path(Digraph &digraph, vector<Arc> &path, vector<Arc> &input_order){
+    std::cout << "entra print_path" << std::endl;
     for(int i = 0 ; i < input_order.size() ; i++){
         if(std::find(path.begin(), path.end(), input_order[i]) == path.end()){ 
             if(digraph[input_order[i]].dir == FORWARD) std::cout << i << std::endl;
@@ -150,35 +150,44 @@ void print_path(Digraph &digraph, vector<Arc> &path, vector<Arc> &input_order){
 }
 
 void print_cut(vector<bool> &s){
+    std::cout << "entra print_cut" << std::endl;
     for(int i = 0 ; i < s.size() ; i++){
         if(s[i] == true) std::cout << i << " ";
     }
 }
 
+int count_cut(vector<bool> &s){
+    int ans = 0;
+    for(bool vertice : s){
+        if(vertice) ans++;
+    }
+    return ans;
+}
+
 void edmonds_karp(Digraph &digraph, vector<Arc> &input_order, int source, int target){
     int maxFlow, e; maxFlow = e = 0;
     while(true){
-        Digraph residual = get_residual(digraph);
-        print_residual(residual, input_order);
-        pair<pair<vector<Arc>, vector<bool>>, bool> bfs_results = bfs(residual, source, target);
+        Digraph *residual = get_residual(digraph);
+        print_residual(*residual, input_order);
+        pair<pair<vector<Arc>, vector<bool>>, bool> bfs_results = bfs(*residual, source, target);
         if(bfs_results.second){
-            e = min_capacity(residual, bfs_results.first.first);
+            e = min_capacity(*residual, bfs_results.first.first);
             maxFlow += e;
-            digraph = change_digraph(residual, bfs_results.first.first, e);
+            change_digraph(digraph, bfs_results.first.first, e);
             std::cout << "0 " << e << " " <<  bfs_results.first.first.size() << endl;
             print_path(digraph, bfs_results.first.first, input_order);
             std::cout << endl;
         }
         else{
-            std::cout << "1 " << maxFlow << " " << bfs_results.first.second.size() << endl;
+            std::cout << "1 " << maxFlow << " " << count_cut(bfs_results.first.second) << endl;
             print_cut(bfs_results.first.second);
             std::cout << endl;
+            return;
         }
     }
 }
 
 int main(int argc, char **argv){
-
     int n, m; std::cin >> n >> m;
     int s, t; std::cin >> s >> t; s--; t--;
 
