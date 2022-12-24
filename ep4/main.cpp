@@ -70,14 +70,15 @@ Digraph* get_residual(Digraph &digraph){
 
 void print_residual(Digraph &residual, vector<Arc> &input_order){
     for(auto arc : input_order)
-        std::cout << residual[arc].capacity << " " << residual[arc].capacity << std::endl;
+        std::cout << residual[arc].capacity << " " << residual[arc].flow << std::endl;
 }
 
 int min_capacity(Digraph &residual, vector<Arc> &path){
     int min_cap = INT32_MAX;
-    
-    for(auto arc : path) min_cap = std::min(min_cap, residual[arc].capacity);
-    
+    for(auto arc : path){
+        if(residual[arc].capacity > 0)
+            min_cap = std::min(min_cap, residual[arc].capacity);
+    }
     return min_cap;
 }
 
@@ -93,11 +94,13 @@ pair<pair<vector<Arc>, vector<bool>>, bool> bfs(Digraph &residual, int source, i
     while(!queueBfs.empty()){
         int from = queueBfs.front(); queueBfs.pop();
         for(auto arc : make_iterator_range(boost::out_edges(from, residual))){
-            Vertex to = boost::target(arc, residual);
-            if(!vertices[to]){
-                residual[to].father = from;
-                vertices[to] = true;
-                queueBfs.push(to);
+            if(residual[arc].capacity > 0){
+                Vertex to = boost::target(arc, residual);
+                if(!vertices[to]){
+                    residual[to].father = from;
+                    vertices[to] = true;
+                    queueBfs.push(to);
+                }
             }
         }
     }
@@ -131,28 +134,28 @@ pair<pair<vector<Arc>, vector<bool>>, bool> bfs(Digraph &residual, int source, i
 
 }
 
-void change_digraph(Digraph &digraph, vector<Arc> &arcs, int e){
-    std::cout << "entra change_digraph" << std::endl;
-    for(auto arc : arcs){
-        if(digraph[arc].dir == FORWARD) digraph[arc].flow += e;
-        else digraph[arc].flow -= e;
+void change_digraph(Digraph &digraph, Digraph &residual, vector<Arc> &path, int e){
+    for(auto arcResidual : path){
+        int source = boost::source(arcResidual, residual);
+        int target = boost::target(arcResidual, residual);
+        Arc arcDigraph = boost::edge(source, target, digraph).first;
+        if(residual[arcResidual].dir == FORWARD) digraph[arcDigraph].flow += e;
+        else digraph[arcDigraph].flow -= e;
     }
 }
 
 void print_path(Digraph &digraph, vector<Arc> &path, vector<Arc> &input_order){
-    std::cout << "entra print_path" << std::endl;
     for(int i = 0 ; i < input_order.size() ; i++){
-        if(std::find(path.begin(), path.end(), input_order[i]) == path.end()){ 
-            if(digraph[input_order[i]].dir == FORWARD) std::cout << i << std::endl;
-            else std::cout << -i << std::endl;
+        if(std::find(path.begin(), path.end(), input_order[i]) != path.end()){
+            if(digraph[input_order[i]].dir == FORWARD) std::cout << i+1 << " ";
+            else std::cout << -(i+1) << " ";
         }
     }
 }
 
 void print_cut(vector<bool> &s){
-    std::cout << "entra print_cut" << std::endl;
     for(int i = 0 ; i < s.size() ; i++){
-        if(s[i] == true) std::cout << i << " ";
+        if(s[i] == true) std::cout << i+1 << " ";
     }
 }
 
@@ -173,7 +176,7 @@ void edmonds_karp(Digraph &digraph, vector<Arc> &input_order, int source, int ta
         if(bfs_results.second){
             e = min_capacity(*residual, bfs_results.first.first);
             maxFlow += e;
-            change_digraph(digraph, bfs_results.first.first, e);
+            change_digraph(digraph, *residual, bfs_results.first.first, e);
             std::cout << "0 " << e << " " <<  bfs_results.first.first.size() << endl;
             print_path(digraph, bfs_results.first.first, input_order);
             std::cout << endl;
