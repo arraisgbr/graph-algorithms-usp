@@ -18,9 +18,13 @@ typedef boost::graph_traits<Arb>::vertex_descriptor Vertex;
    these objects are only accessed by the student's code */
 class HeadStart {
 public:
-  HeadStart(int info) : super_useful_info(info) {}
-private:
-  int super_useful_info;
+  int *start;
+  int *end;
+public:
+  HeadStart(int num_vertices){
+    this->start = new int[num_vertices]; memset(start, -1, sizeof(int) * num_vertices);
+    this->end = new int[num_vertices]; memset(end, -1, sizeof(int) * num_vertices);
+  }
 };
 
 #endif // #ifndef ARB_H
