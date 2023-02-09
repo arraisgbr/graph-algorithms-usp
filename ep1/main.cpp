@@ -39,6 +39,10 @@ int toTrue(int var, int n){
 }
 #pragma endregion
 
+void tarjan(Digraph &digraph, int *scc){
+    
+}
+
 int main(){
 
     int debug; std::cin >> debug;
@@ -64,5 +68,29 @@ int main(){
 
         add_edge(aNeg, b, digraph);
         add_edge(bNeg, a, digraph);
+    }
+
+    int *scc = new int[2*n]; memset(scc, -1, sizeof(*scc));
+    tarjan(digraph, scc);
+
+    bool sat = true;
+    int varUnsat;
+    for(int i = 1 ; i <= n ; i++){
+        int iNeg = toValidOrFalse(i, n);
+        if(scc[i] == scc[iNeg]){
+            varUnsat = i;
+            sat = false;
+            break;
+        }
+    }
+
+    if(sat){
+        std::cout << "YES" << std::endl;
+        // toDo
+    } 
+    else{
+        std::cout << "NO" << std::endl;
+        std::cout << varUnsat << std::endl;
+        // toDo
     }
 }
