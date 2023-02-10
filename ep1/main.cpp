@@ -28,11 +28,15 @@ using boost::add_edge;
 using boost::make_iterator_range;
 using boost::vertices;
 using boost::out_edges;
+using boost::source;
 using boost::target;
 using boost::num_vertices;
 #pragma endregion
 
-// toValidOrFalse and toTrue functions
+// global variables
+int *map;
+
+// toValidOrFalse, toTrue and toNegative functions
 #pragma region
 int toValidOrFalse(int var, int num_vertices){
     return abs(var) + num_vertices;
@@ -40,6 +44,11 @@ int toValidOrFalse(int var, int num_vertices){
 
 int toTrue(int var, int num_vertices){
     return var - num_vertices;
+}
+
+int toNegative(int var, int num_vertices){
+    if(var > num_vertices) return num_vertices - var;
+    return var;
 }
 #pragma endregion
 
@@ -113,6 +122,7 @@ std::pair<bool, int> tarjan(Digraph &digraph, int num_vertices){
 #pragma endregion
 
 // read digraph
+#pragma region
 std::pair<Digraph, int> readDigraph(std::istream &in){
     int num_vertices, m; in >> num_vertices >> m;
 
@@ -126,9 +136,9 @@ std::pair<Digraph, int> readDigraph(std::istream &in){
 
         // getting the negation of the variable
         int aNeg, bNeg;
-        if(a >= num_vertices) aNeg = toTrue(a, num_vertices);
+        if(a > num_vertices) aNeg = toTrue(a, num_vertices);
         else aNeg = toValidOrFalse(a, num_vertices);
-        if(b >= num_vertices) bNeg = toTrue(b, num_vertices);
+        if(b > num_vertices) bNeg = toTrue(b, num_vertices);
         else bNeg = toValidOrFalse(b, num_vertices);
         
         arcs.push_back(std::make_pair(aNeg, b));
@@ -137,6 +147,39 @@ std::pair<Digraph, int> readDigraph(std::istream &in){
 
     return std::make_pair(Digraph(arcs.begin(), arcs.end(), 2*num_vertices), num_vertices);
 }
+#pragma endregion
+
+//dfs and print path
+#pragma region
+void dfsR(Digraph &digraph, int varUnsat, int varUnsatNeg, std::stack<Vertex> &path, bool *vis){
+    vis[varUnsat] = true;
+    path.push(varUnsat);
+    if(varUnsat == varUnsatNeg) return;
+    for(Arc arc : make_iterator_range(out_edges(varUnsat, digraph))){
+        Vertex to = target(arc, digraph);
+        if(!vis[to]){
+            dfsR(digraph, to, varUnsatNeg, path, vis);
+            return;
+        }
+    }
+}
+
+void dfs(Digraph &digraph, int varUnsat, int varUnsatNeg, std::stack<Vertex> &path, int num_vertices){
+    bool *vis = new bool[num_vertices]; memset(vis, false, sizeof(bool) *num_vertices);
+    dfsR(digraph, varUnsat, varUnsatNeg, path, vis);
+}
+
+void printPath(Digraph &digraph, std::stack<Vertex> &path, int num_vertices){
+    std::cout << path.size()-1 << " ";
+    std::vector<Vertex> pathInv;
+    while(!path.empty()){
+        pathInv.push_back(path.top()); path.pop();
+    }
+    std::reverse(pathInv.begin(), pathInv.end());
+    for(auto vertex : pathInv) std::cout << map[vertex] << " ";
+    std::cout << std::endl;
+}
+#pragma endregion
 
 int main(){
 
@@ -146,7 +189,12 @@ int main(){
     Digraph digraph = digraphFull.first;
     int num_vertices = digraphFull.second;
 
+    map = new int[2*num_vertices];
+    for(int i = 1 ; i <= num_vertices ; i++) map[i] = i;
+    for(int i = num_vertices+1, j = -1 ; i <= 2*num_vertices ; i++, j--) map[i] = j;
+
     std::pair<bool, int> ans = tarjan(digraph, num_vertices);
+    int varUnsat = ans.second;
 
     if(ans.first){
         std::cout << "YES" << std::endl;
@@ -154,7 +202,14 @@ int main(){
     } 
     else{
         std::cout << "NO" << std::endl;
-        std::cout << ans.second << std::endl;
+        std::cout << varUnsat << std::endl;
+        std::stack<Vertex> path;
+        std::stack<Vertex> pathRev;
+        int varUnsatNeg = varUnsat > num_vertices ? toTrue(varUnsat, num_vertices) : toValidOrFalse(varUnsat, num_vertices);
+        dfs(digraph, varUnsat, varUnsatNeg, path, num_vertices);
+        dfs(digraph, varUnsatNeg, varUnsat, pathRev, num_vertices);
+        printPath(digraph, path, num_vertices);
+        printPath(digraph, pathRev, num_vertices);
     }
 
 }
