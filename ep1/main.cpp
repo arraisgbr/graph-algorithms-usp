@@ -81,7 +81,7 @@ std::pair<Digraph, int> readDigraph(std::istream &in){
 std::pair<bool, int> verifySat(int *scc, int num_vertices){
     bool sat = true;
     bool varUnsat;
-    for(int i = 0 ; i < num_vertices ; i++){
+    for(int i = 1 ; i <= num_vertices ; i++){
         int iNeg = toValidOrFalse(i, num_vertices);
         if(scc[i] == scc[iNeg]){
             varUnsat = i;
@@ -139,7 +139,7 @@ std::pair<bool, int> tarjan(Digraph &digraph, int num_vertices, vector<Vertex> &
         inStack[i] = false;
     }
 
-    for(int i = 0 ; i < 2*num_vertices ; i++){
+    for(int i = 1 ; i <= 2*num_vertices ; i++){
         if(disc[i] == -1)
             tarjanR(digraph, i, scc, disc, low, stack, inStack, sccNum, time, topologicalSort, sccSets);
     }
@@ -201,23 +201,28 @@ int main(){
 
     int debug; std::cin >> debug;
 
+    // reading the digraph
     std::pair<Digraph, int> digraphFull = readDigraph(std::cin);
     Digraph digraph = digraphFull.first;
     int num_vertices = digraphFull.second;
 
+    // creating the map for negative values
     map = new int[2*num_vertices];
     for(int i = 1 ; i <= num_vertices ; i++) map[i] = i;
     for(int i = num_vertices+1, j = -1 ; i <= 2*num_vertices ; i++, j--) map[i] = j;
 
+    // finding the strong connected components and verifying the cnf 
     vector<Vertex> topologicalSort;
     vector<vector<Vertex>> sccSets;
     std::pair<bool, int> ans = tarjan(digraph, num_vertices, topologicalSort, sccSets);
     int varUnsat = ans.second;
 
+    // if the cnf given can be true
     if(ans.first){
         std::cout << "YES" << std::endl;
         int *values = new int[2*num_vertices]; memset(values, -1, sizeof(int) * 2*num_vertices);
         getValues(values, topologicalSort, sccSets, num_vertices);
+        // printing the values of each variable
         for(int i = 1 ; i <= num_vertices ; i++) std::cout << values[i] << " ";
         std::cout << std::endl;
     } 
@@ -227,6 +232,7 @@ int main(){
         std::stack<Vertex> path;
         std::stack<Vertex> pathRev;
         int varUnsatNeg = varUnsat > num_vertices ? toTrue(varUnsat, num_vertices) : toValidOrFalse(varUnsat, num_vertices);
+        // finding paths to comprove the unsatisfiability
         dfs(digraph, varUnsat, varUnsatNeg, path, num_vertices);
         dfs(digraph, varUnsatNeg, varUnsat, pathRev, num_vertices);
         printPath(digraph, path, num_vertices);
