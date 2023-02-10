@@ -35,7 +35,7 @@ using boost::num_vertices;
 // toValidOrFalse and toTrue functions
 #pragma region
 int toValidOrFalse(int var, int num_vertices){
-    return abs(var) + num_vertices - 1;
+    return abs(var) + num_vertices;
 }
 
 int toTrue(int var, int num_vertices){
@@ -122,9 +122,7 @@ std::pair<Digraph, int> readDigraph(std::istream &in){
         int a, b; std::cin >> a >> b;
         // getting the positive value for the vertex
         if(a < 0) a = toValidOrFalse(a, num_vertices);
-        else a -= 1;
         if(b < 0) b = toValidOrFalse(b, num_vertices);
-        else b -= 1;
 
         // getting the negation of the variable
         int aNeg, bNeg;
@@ -157,7 +155,6 @@ int main(){
     else{
         std::cout << "NO" << std::endl;
         std::cout << ans.second << std::endl;
-        // toDo
     }
 
 }
