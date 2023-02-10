@@ -5,6 +5,7 @@
 #include <stack>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/range/iterator_range.hpp>
 #pragma endregion
 
 // defines
@@ -34,7 +35,7 @@ using boost::num_vertices;
 // toValidOrFalse and toTrue functions
 #pragma region
 int toValidOrFalse(int var, int n){
-    return abs(var) + n;
+    return abs(var) + n - 1;
 }
 
 int toTrue(int var, int n){
@@ -58,8 +59,7 @@ std::pair<bool, int> verifySat(int *scc, int n){
     return std::make_pair(sat, varUnsat);
 }
 
-void tarjanR(Digraph &digraph, int vertex, int *scc, int *disc, int *low, std::stack<int> &stack, bool *inStack, int sccNum){
-    static int time = 0;
+void tarjanR(Digraph &digraph, int vertex, int *scc, int *disc, int *low, std::stack<int> &stack, bool *inStack, int sccNum, int &time){
     disc[vertex] = low[vertex] = ++time;
     stack.push(vertex);
     inStack[vertex] = true;
@@ -67,7 +67,7 @@ void tarjanR(Digraph &digraph, int vertex, int *scc, int *disc, int *low, std::s
     for(Arc arc : make_iterator_range(out_edges(vertex, digraph))){
         Vertex to = target(arc, digraph);
         if(disc[to] == -1){
-            tarjanR(digraph, to, scc, disc, low, stack, inStack, sccNum);
+            tarjanR(digraph, to, scc, disc, low, stack, inStack, sccNum, time);
             low[vertex] = std::min(low[vertex], low[to]);
         }
         else if(inStack[to])
@@ -94,6 +94,7 @@ std::pair<bool, int> tarjan(Digraph &digraph){
     std::stack<int> stack;
     
     int sccNum = 0;
+    int time = 0;
     int *disc = new int[2*n]; 
     int *low = new int[2*n]; 
     bool *inStack = new bool[2*n]; 
@@ -106,7 +107,7 @@ std::pair<bool, int> tarjan(Digraph &digraph){
     for(int i = 0 ; i < 2*n ; i++){
         if(disc[i] == -1){
             sccNum++;
-            tarjanR(digraph, i, scc, disc, low, stack, inStack, sccNum);
+            tarjanR(digraph, i, scc, disc, low, stack, inStack, sccNum, time);
         }
     }
 
@@ -116,12 +117,11 @@ std::pair<bool, int> tarjan(Digraph &digraph){
 }
 #pragma endregion
 
-int main(){
+// read graph
+Digraph readDigraph(std::istream &in){
+    int n, m; in >> n >> m;
 
-    int debug; std::cin >> debug;
-    int n, m; std::cin >> n >> m;
-
-    Digraph digraph(2*n);
+    std::vector<std::pair<int, int>> arcs;
 
     while(m--){
         int a, b; std::cin >> a >> b;
@@ -138,10 +138,20 @@ int main(){
         if(b >= n) bNeg = toTrue(b, n);
         else bNeg = toValidOrFalse(b, n);
         
-        add_edge(aNeg, b, digraph);
-        add_edge(bNeg, a, digraph);
+        arcs.push_back(std::make_pair(aNeg, b));
+        arcs.push_back(std::make_pair(bNeg, a));
     }
 
+    return Digraph(arcs.begin(), arcs.end(), n);
+}
+
+int main(){
+
+    int debug; std::cin >> debug;
+
+    Digraph digraph = readDigraph(std::cin);
+
+    // debug
     for(Vertex vertex : make_iterator_range(vertices(digraph))){
         std::cout << vertex << ": ";
         for(Arc arc : make_iterator_range(out_edges(vertex, digraph))){
