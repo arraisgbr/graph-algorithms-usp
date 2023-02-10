@@ -31,12 +31,13 @@ using boost::out_edges;
 using boost::source;
 using boost::target;
 using boost::num_vertices;
+using std::vector;
 #pragma endregion
 
 // global variables
 int *map;
 
-// toValidOrFalse, toTrue and toNegative functions
+// toValidOrFalse and toTrue functions
 #pragma region
 int toValidOrFalse(int var, int num_vertices){
     return abs(var) + num_vertices;
@@ -45,80 +46,6 @@ int toValidOrFalse(int var, int num_vertices){
 int toTrue(int var, int num_vertices){
     return var - num_vertices;
 }
-
-int toNegative(int var, int num_vertices){
-    if(var > num_vertices) return num_vertices - var;
-    return var;
-}
-#pragma endregion
-
-// tarjan
-#pragma region
-std::pair<bool, int> verifySat(int *scc, int num_vertices){
-    bool sat = true;
-    bool varUnsat;
-    for(int i = 0 ; i < num_vertices ; i++){
-        int iNeg = toValidOrFalse(i, num_vertices);
-        if(scc[i] == scc[iNeg]){
-            varUnsat = i;
-            sat = false;
-            break;
-        }
-    }
-    return std::make_pair(sat, varUnsat);
-}
-
-void tarjanR(Digraph &digraph, int vertex, int *scc, int *disc, int *low, std::stack<int> &stack, bool *inStack, int &sccNum, int &time){
-    disc[vertex] = low[vertex] = ++time;
-    stack.push(vertex);
-    inStack[vertex] = true;
-
-    for(Arc arc : make_iterator_range(out_edges(vertex, digraph))){
-        Vertex to = target(arc, digraph);
-        if(disc[to] == -1){
-            tarjanR(digraph, to, scc, disc, low, stack, inStack, sccNum, time);
-            low[vertex] = std::min(low[vertex], low[to]);
-        }
-        else if(inStack[to])
-            low[vertex] = std::min(low[vertex], disc[to]);
-    }
-
-    if(disc[vertex] == low[vertex]){
-        sccNum++;
-        while(stack.top() != vertex){
-            Vertex curr = stack.top(); stack.pop();
-            inStack[curr] = false;
-            scc[curr] = sccNum;
-        }
-        stack.pop();
-        scc[vertex] = sccNum;
-        inStack[vertex] = false;
-    }
-}
-
-std::pair<bool, int> tarjan(Digraph &digraph, int num_vertices){
-    std::stack<int> stack;
-    
-    int sccNum = 0;
-    int time = 0;
-    int *disc = new int[2*num_vertices]; 
-    int *low = new int[2*num_vertices]; 
-    bool *inStack = new bool[2*num_vertices]; 
-    int *scc = new int[2*num_vertices];
-    for(int i = 0 ; i < 2*num_vertices ; i++){
-        scc[i] = disc[i] = low[i] = -1;
-        inStack[i] = false;
-    }
-
-    for(int i = 0 ; i < 2*num_vertices ; i++){
-        if(disc[i] == -1)
-            tarjanR(digraph, i, scc, disc, low, stack, inStack, sccNum, time);
-    }
-
-    std::pair<bool, int> ans = verifySat(scc, num_vertices);
-
-    return ans;
-}
 #pragma endregion
 
 // read digraph
@@ -126,7 +53,7 @@ std::pair<bool, int> tarjan(Digraph &digraph, int num_vertices){
 std::pair<Digraph, int> readDigraph(std::istream &in){
     int num_vertices, m; in >> num_vertices >> m;
 
-    std::vector<std::pair<int, int>> arcs;
+    vector<std::pair<int, int>> arcs;
 
     while(m--){
         int a, b; std::cin >> a >> b;
@@ -146,6 +73,80 @@ std::pair<Digraph, int> readDigraph(std::istream &in){
     }
 
     return std::make_pair(Digraph(arcs.begin(), arcs.end(), 2*num_vertices), num_vertices);
+}
+#pragma endregion
+
+// tarjan and verify sat
+#pragma region
+std::pair<bool, int> verifySat(int *scc, int num_vertices){
+    bool sat = true;
+    bool varUnsat;
+    for(int i = 0 ; i < num_vertices ; i++){
+        int iNeg = toValidOrFalse(i, num_vertices);
+        if(scc[i] == scc[iNeg]){
+            varUnsat = i;
+            sat = false;
+            break;
+        }
+    }
+    return std::make_pair(sat, varUnsat);
+}
+
+void tarjanR(Digraph &digraph, int vertex, int *scc, int *disc, int *low, std::stack<int> &stack, bool *inStack, int &sccNum, int &time, vector<Vertex> &topologicalSort, vector<vector<Vertex>> &sccSets){
+    disc[vertex] = low[vertex] = ++time;
+    stack.push(vertex);
+    inStack[vertex] = true;
+
+    for(Arc arc : make_iterator_range(out_edges(vertex, digraph))){
+        Vertex to = target(arc, digraph);
+        if(disc[to] == -1){
+            tarjanR(digraph, to, scc, disc, low, stack, inStack, sccNum, time, topologicalSort, sccSets);
+            low[vertex] = std::min(low[vertex], low[to]);
+        }
+        else if(inStack[to])
+            low[vertex] = std::min(low[vertex], disc[to]);
+    }
+
+    if(disc[vertex] == low[vertex]){
+        vector<Vertex> vertexOfComp;
+        topologicalSort.push_back(sccNum);
+        while(stack.top() != vertex){
+            Vertex curr = stack.top(); stack.pop();
+            inStack[curr] = false;
+            scc[curr] = sccNum;
+            vertexOfComp.push_back(curr);
+        }
+        stack.pop();
+        scc[vertex] = sccNum;
+        vertexOfComp.push_back(vertex);
+        inStack[vertex] = false;
+        sccSets.push_back(vertexOfComp);
+        sccNum++;
+    }
+}
+
+std::pair<bool, int> tarjan(Digraph &digraph, int num_vertices, vector<Vertex> &topologicalSort, vector<vector<Vertex>> &sccSets){
+    std::stack<int> stack;
+    
+    int sccNum = 0;
+    int time = 0;
+    int *disc = new int[2*num_vertices]; 
+    int *low = new int[2*num_vertices]; 
+    bool *inStack = new bool[2*num_vertices]; 
+    int *scc = new int[2*num_vertices];
+    for(int i = 0 ; i < 2*num_vertices ; i++){
+        scc[i] = disc[i] = low[i] = -1;
+        inStack[i] = false;
+    }
+
+    for(int i = 0 ; i < 2*num_vertices ; i++){
+        if(disc[i] == -1)
+            tarjanR(digraph, i, scc, disc, low, stack, inStack, sccNum, time, topologicalSort, sccSets);
+    }
+
+    std::pair<bool, int> ans = verifySat(scc, num_vertices);
+
+    return ans;
 }
 #pragma endregion
 
@@ -171,7 +172,7 @@ void dfs(Digraph &digraph, int varUnsat, int varUnsatNeg, std::stack<Vertex> &pa
 
 void printPath(Digraph &digraph, std::stack<Vertex> &path, int num_vertices){
     std::cout << path.size()-1 << " ";
-    std::vector<Vertex> pathInv;
+    vector<Vertex> pathInv;
     while(!path.empty()){
         pathInv.push_back(path.top()); path.pop();
     }
@@ -180,6 +181,21 @@ void printPath(Digraph &digraph, std::stack<Vertex> &path, int num_vertices){
     std::cout << std::endl;
 }
 #pragma endregion
+
+void getValues(int *values, vector<Vertex> topologicalSort, vector<vector<Vertex>> &sccSets, int num_vertices){
+    reverse(topologicalSort.begin(), topologicalSort.end());
+    for(Vertex i : topologicalSort){
+        for(Vertex j  : sccSets[i]){
+            if(values[j] == -1){
+                values[j] = 1;
+                int jNeg;
+                if(j > num_vertices) jNeg = toTrue(j, num_vertices);
+                else jNeg = toValidOrFalse(j, num_vertices);
+                values[jNeg] = 0;
+            }
+        }
+    }
+}
 
 int main(){
 
@@ -193,12 +209,17 @@ int main(){
     for(int i = 1 ; i <= num_vertices ; i++) map[i] = i;
     for(int i = num_vertices+1, j = -1 ; i <= 2*num_vertices ; i++, j--) map[i] = j;
 
-    std::pair<bool, int> ans = tarjan(digraph, num_vertices);
+    vector<Vertex> topologicalSort;
+    vector<vector<Vertex>> sccSets;
+    std::pair<bool, int> ans = tarjan(digraph, num_vertices, topologicalSort, sccSets);
     int varUnsat = ans.second;
 
     if(ans.first){
         std::cout << "YES" << std::endl;
-        // toDo
+        int *values = new int[2*num_vertices]; memset(values, -1, sizeof(int) * 2*num_vertices);
+        getValues(values, topologicalSort, sccSets, num_vertices);
+        for(int i = 1 ; i <= num_vertices ; i++) std::cout << values[i] << " ";
+        std::cout << std::endl;
     } 
     else{
         std::cout << "NO" << std::endl;
