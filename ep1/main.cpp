@@ -34,22 +34,22 @@ using boost::num_vertices;
 
 // toValidOrFalse and toTrue functions
 #pragma region
-int toValidOrFalse(int var, int n){
-    return abs(var) + n - 1;
+int toValidOrFalse(int var, int num_vertices){
+    return abs(var) + num_vertices - 1;
 }
 
-int toTrue(int var, int n){
-    return var - n;
+int toTrue(int var, int num_vertices){
+    return var - num_vertices;
 }
 #pragma endregion
 
 // tarjan
 #pragma region
-std::pair<bool, int> verifySat(int *scc, int n){
+std::pair<bool, int> verifySat(int *scc, int num_vertices){
     bool sat = true;
     bool varUnsat;
-    for(int i = 0 ; i < n ; i++){
-        int iNeg = toValidOrFalse(i, n);
+    for(int i = 0 ; i < num_vertices ; i++){
+        int iNeg = toValidOrFalse(i, num_vertices);
         if(scc[i] == scc[iNeg]){
             varUnsat = i;
             sat = false;
@@ -59,7 +59,7 @@ std::pair<bool, int> verifySat(int *scc, int n){
     return std::make_pair(sat, varUnsat);
 }
 
-void tarjanR(Digraph &digraph, int vertex, int *scc, int *disc, int *low, std::stack<int> &stack, bool *inStack, int sccNum, int &time){
+void tarjanR(Digraph &digraph, int vertex, int *scc, int *disc, int *low, std::stack<int> &stack, bool *inStack, int &sccNum, int &time){
     disc[vertex] = low[vertex] = ++time;
     stack.push(vertex);
     inStack[vertex] = true;
@@ -74,10 +74,8 @@ void tarjanR(Digraph &digraph, int vertex, int *scc, int *disc, int *low, std::s
             low[vertex] = std::min(low[vertex], disc[to]);
     }
 
-    //debug
-    // std::cout << "Chegou no stack" << std::endl;
-
     if(disc[vertex] == low[vertex]){
+        sccNum++;
         while(stack.top() != vertex){
             Vertex curr = stack.top(); stack.pop();
             inStack[curr] = false;
@@ -89,79 +87,68 @@ void tarjanR(Digraph &digraph, int vertex, int *scc, int *disc, int *low, std::s
     }
 }
 
-std::pair<bool, int> tarjan(Digraph &digraph){
-    int n = num_vertices(digraph);
+std::pair<bool, int> tarjan(Digraph &digraph, int num_vertices){
     std::stack<int> stack;
     
     int sccNum = 0;
     int time = 0;
-    int *disc = new int[2*n]; 
-    int *low = new int[2*n]; 
-    bool *inStack = new bool[2*n]; 
-    int *scc = new int[2*n];
-    for(int i = 0 ; i < 2*n ; i++){
+    int *disc = new int[2*num_vertices]; 
+    int *low = new int[2*num_vertices]; 
+    bool *inStack = new bool[2*num_vertices]; 
+    int *scc = new int[2*num_vertices];
+    for(int i = 0 ; i < 2*num_vertices ; i++){
         scc[i] = disc[i] = low[i] = -1;
         inStack[i] = false;
     }
 
-    for(int i = 0 ; i < 2*n ; i++){
-        if(disc[i] == -1){
-            sccNum++;
+    for(int i = 0 ; i < 2*num_vertices ; i++){
+        if(disc[i] == -1)
             tarjanR(digraph, i, scc, disc, low, stack, inStack, sccNum, time);
-        }
     }
 
-    std::pair<bool, int> ans = verifySat(scc, n);    
+    std::pair<bool, int> ans = verifySat(scc, num_vertices);
 
     return ans;
 }
 #pragma endregion
 
-// read graph
-Digraph readDigraph(std::istream &in){
-    int n, m; in >> n >> m;
+// read digraph
+std::pair<Digraph, int> readDigraph(std::istream &in){
+    int num_vertices, m; in >> num_vertices >> m;
 
     std::vector<std::pair<int, int>> arcs;
 
     while(m--){
         int a, b; std::cin >> a >> b;
         // getting the positive value for the vertex
-        if(a < 0) a = toValidOrFalse(a, n);
+        if(a < 0) a = toValidOrFalse(a, num_vertices);
         else a -= 1;
-        if(b < 0) b = toValidOrFalse(b, n);
+        if(b < 0) b = toValidOrFalse(b, num_vertices);
         else b -= 1;
 
         // getting the negation of the variable
         int aNeg, bNeg;
-        if(a >= n) aNeg = toTrue(a, n);
-        else aNeg = toValidOrFalse(a, n);
-        if(b >= n) bNeg = toTrue(b, n);
-        else bNeg = toValidOrFalse(b, n);
+        if(a >= num_vertices) aNeg = toTrue(a, num_vertices);
+        else aNeg = toValidOrFalse(a, num_vertices);
+        if(b >= num_vertices) bNeg = toTrue(b, num_vertices);
+        else bNeg = toValidOrFalse(b, num_vertices);
         
         arcs.push_back(std::make_pair(aNeg, b));
         arcs.push_back(std::make_pair(bNeg, a));
     }
 
-    return Digraph(arcs.begin(), arcs.end(), n);
+    return std::make_pair(Digraph(arcs.begin(), arcs.end(), 2*num_vertices), num_vertices);
 }
 
 int main(){
 
     int debug; std::cin >> debug;
 
-    Digraph digraph = readDigraph(std::cin);
+    std::pair<Digraph, int> digraphFull = readDigraph(std::cin);
+    Digraph digraph = digraphFull.first;
+    int num_vertices = digraphFull.second;
 
-    // debug
-    for(Vertex vertex : make_iterator_range(vertices(digraph))){
-        std::cout << vertex << ": ";
-        for(Arc arc : make_iterator_range(out_edges(vertex, digraph))){
-            Vertex to = target(arc, digraph);
-            std::cout << to << " ";
-        }
-        std::cout << std::endl;
-    }
-
-    std::pair<bool, int> ans = tarjan(digraph);
+    std::pair<bool, int> ans = tarjan(digraph, num_vertices);
 
     if(ans.first){
         std::cout << "YES" << std::endl;
